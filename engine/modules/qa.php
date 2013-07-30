@@ -1,5 +1,32 @@
 <?php
 
+//error_reporting(0);
+
+if(isset($_POST['admin_action']) && $member_id['user_group'] == 1)
+{
+	switch ($_POST['admin_action']) {
+		case 'delete_comment':
+			$comment = new Comment;
+			$comment->delete($_POST['id']);
+			break;
+
+		case 'delete_question':
+			$question = new Question;
+			$question->delete($_POST['id']);
+			break;
+
+		case 'edit_comment':
+			$comment = new Comment;
+			$comment->edit($_POST['text'], $_POST['id']);
+			break;
+
+		case 'edit_question':
+			$question = new Question;
+			$question->edit($_POST['title'], $_POST['text'], $_POST['id']);
+			break;
+	}
+}
+
 switch ($_GET['action']) {
 	case 'add':
 		$category = new Category();
@@ -37,6 +64,17 @@ switch ($_GET['action']) {
 			foreach ($comments as $key => $value) {
 				$qa_comment = $tpl->sub_load_template('qa_comment.tpl');
 				$template .= str_replace('{comment}', $value, $qa_comment);
+				$template = str_replace('{id}', $key, $template);
+				if($member_id['user_group'] == 1)
+				{
+					$template = str_replace('[admin]', '', $template);
+					$template = str_replace('[/admin]', '', $template);
+				}
+				else
+				{
+					$template = str_replace('[admin]', '<!--', $template);
+					$template = str_replace('[/admin]', '-->', $template);
+				}
 			}
 			$tpl->set('{comments}', $template);
 		}
@@ -48,6 +86,16 @@ switch ($_GET['action']) {
 		$question = $question->showById($_GET['question']);
 		$tpl->load_template('qa_show_question.tpl');
 		$tpl->set('{title}', $question['title']);
+		if($member_id['user_group'] == 1)
+		{
+			$tpl->set( '[admin]', "" );
+			$tpl->set( '[/admin]', "" );
+		}
+		else
+		{
+			$tpl->set( '[admin]', "<!--" );
+			$tpl->set( '[/admin]', "-->" );
+		}
 		$tpl->set('{text}', $question['text']);
 		if($_SESSION['dle_user_id'])
 		{
@@ -63,6 +111,7 @@ switch ($_GET['action']) {
 		$tpl->set( '[/error-text]', "-->" );
 		$tpl->set( '[error-captcha]', "<!--" );
 		$tpl->set( '[/error-captcha]', "-->" );
+		$tpl->set('{id}', $_GET['question']);
 		$tpl->set('{text-comment}', '');
 		break;
 
@@ -259,6 +308,17 @@ class Question extends db
 		}
 	}
 
+	public function edit($title, $text, $id)
+	{
+		$this->query("UPDATE qa_question SET title='{$title}', `text`='{$text}' WHERE id={$id}");
+	}
+
+	public function delete($id)
+	{
+		$this->query("DELETE FROM qa_question WHERE id={$id}");
+		$this->query("DELETE FROM qa_comment WHERE id_question={$id}");
+	}
+
 	protected function getNumber()
 	{
 		if($this->id_category)
@@ -296,6 +356,16 @@ class Comment extends db
 		{
 			return false;
 		}
+	}
+
+	public function edit($text, $id)
+	{
+		$this->query("UPDATE qa_comment SET `text`='{$text}' WHERE id={$id}");
+	}
+
+	public function delete($id)
+	{
+		$this->query("DELETE FROM qa_comment WHERE id={$id}");
 	}
 }
 
